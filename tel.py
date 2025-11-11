@@ -69,9 +69,8 @@ async def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # === MAIN APP ===
+  # === MAIN APP ===
 async def main():
-    # Initialize the app WITH JobQueue enabled
     app = (
         ApplicationBuilder()
         .token(TOKEN)
@@ -79,12 +78,10 @@ async def main():
         .build()
     )
 
-    # Add handlers
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # Initialize job queue manually
+    # Initialize JobQueue manually (for reminders)
     job_queue = app.job_queue
-
     if job_queue is None:
         from telegram.ext import JobQueue
         job_queue = JobQueue()
@@ -95,5 +92,12 @@ async def main():
     job_queue.run_repeating(send_reminder, interval=60 * 60 * 1, first=10)
 
     print("🤖 CR7 Bot is live and sending hourly reminders...")
-    await app.run_polling()
 
+    # Keep bot alive
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await asyncio.Event().wait()  # keeps the process alive forever
+
+if __name__ == "__main__":
+    asyncio.run(main())
