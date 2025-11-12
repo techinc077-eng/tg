@@ -20,17 +20,17 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         group_members.add(username)
 
         caption = f"""
-🐐 *CR7 FAMILY IT’S VOTING TIME!*  
+🚀 **CR7 FAMILY — IT’S VOTING TIME!** 🐐 
 
 Welcome @{username}! ⚡  
-We’re calling on every member of the community to vote for **CR7 Token** and help push us to the top of the trending list! 💪⚡  
+It’s time to unite and vote for CR7 Token, let’s push our project to the top of the trending list! 💪🔥 
 
-By casting your vote, you not only support the project, you also earn rewards:  
-💰 *CR7 Tokens*  
-🎁 *SOL Rewards*  
+✅ By voting, you’ll earn:
+• 💰 **CR7 Tokens**
+• 🎁 **SOL Rewards**
 
-Let’s show the world the power of the CR7 community! 🌍🔥  
-⭐ *Vote now and secure your rewards!*
+Let’s show the world the unstoppable power of the CR7 Community! 🌍💫
+👇 **Tap below to cast your vote & claim your rewards!**
 """
 
         keyboard = [
