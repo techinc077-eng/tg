@@ -53,16 +53,17 @@ async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = """
-📢 *CR7 FAMILY HOURLY REMINDER!*  
+📢*TIME TO RISE CR7 FAMILY!* 🐐 
 
-It’s time again to boost **CR7 Token** to the top of the Sol Trending list! 💪⚡  
+Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡ 
 
-Each vote brings us closer to victory and you earn:  
-💰 *CR7 Tokens*  
-🎁 *SOL Rewards*  
+Every vote counts — and each one brings you exclusive rewards: 
+💰 *CR7 Tokens*
+🎁 *SOL Rewards*
 
-Tap below to cast your vote now and claim your rewards in the CR7 movement! 🌍🔥  
-#VoteToEarn
+Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
+
+👇 Tap below to vote & earn now!
 """
 
     # Send main reminder message
@@ -84,7 +85,7 @@ Tap below to cast your vote now and claim your rewards in the CR7 movement! 🌍
             try:
                 await context.bot.send_message(
                     chat_id=GROUP_CHAT_ID,
-                    text=f"🔔 Reminder for our loyal members:\n{tags}",
+                    text=f"🔔VOTE NOW! \n{tags}",
                     disable_notification=True
                 )
                 await asyncio.sleep(5)  # slight delay to avoid spam
@@ -111,7 +112,7 @@ async def main():
         job_queue.start()
 
     # Run hourly reminders
-    job_queue.run_repeating(send_reminder, interval=60 * 60 * 1, first=10)
+    job_queue.run_repeating(send_reminder, interval=60 * 15 * 1, first=5)
 
     print("🤖 CR7 Bot is live and sending hourly reminders with tags...")
 
