@@ -6,7 +6,7 @@ import asyncio
 # === SETTINGS ===
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
 VOTE_LINK = "cr7.soltrendingvote.top"
-IMAGE_URL = "https://img.cr7officialsol.art/cr7.jpg"
+IMAGE_URL = "https://icohtech.ng/cr7.jpg"
 GROUP_CHAT_ID = -1003295107465  # Replace with your actual group chat ID
 
 # Store members globally (in-memory)
