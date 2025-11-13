@@ -3,7 +3,7 @@ import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, JobQueue
 
-TOKEN = os.environ["TOKEN"]
+TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
 VOTE_LINK = "cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
 GROUP_CHAT_ID = -1003295107465
