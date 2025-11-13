@@ -26,7 +26,7 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐  
 
 Welcome @{username}! ⚡  
-It’s time to unite and vote for CR7 Token — let’s push our project to the top of the trending list! 💪🔥  
+It’s time to unite and vote for CR7 Token. let’s push our project to the top of the trending list! 💪🔥  
 
 ✅ *By voting, you’ll earn:*  
 • 💰 *CR7 Tokens*  
@@ -56,11 +56,13 @@ async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
 Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡  
 
-Each vote counts — and brings you exclusive rewards:  
+Each vote counts and brings you exclusive rewards:  
 💰 *CR7 Tokens*  
 🎁 *SOL Rewards*  
 
-🔥 Tap below to vote & earn now 👇
+Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
+
+*Tap below to vote & claim your Reward* 👇
 """
 
     members_list = list(group_members)
