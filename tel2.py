@@ -16,7 +16,7 @@ GROUP_CHAT_ID = -1003295107465
 # === GLOBAL DATA ===
 group_members = set()
 
-# === WELCOME ===
+# === WELCOME MESSAGE ===
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         username = member.username or member.first_name
@@ -26,44 +26,43 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐  
 
 Welcome @{username}! ⚡  
-It’s time to unite and vote for CR7 Token. Let’s push our project to the top! 💪🔥  
+Let’s unite and vote CR7 Token to the top! 💪🔥  
 
 💰 *CR7 Tokens*  
 🎁 *SOL Rewards*  
 
-👇 Tap below to vote & claim your rewards!
+👇 Tap below to vote & claim your Rewards!
 """
 
         keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_photo(
             photo=IMAGE_URL,
             caption=caption,
             parse_mode="Markdown",
-            reply_markup=reply_markup
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
 # === REMINDER ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
 
     base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
 
-Let’s push CR7 Token straight to the top! 💪⚡  
+Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡  
 
 💰 *CR7 Tokens*  
 🎁 *SOL Rewards*  
 
-Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
-
-Tap below to Vote & Claim your Reward 👇
+🔥 Tap below to Vote & Claim your Reward👇
 """
 
-    members_list = list(group_members)
+    keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if not members_list:
+    members = list(group_members)
+    batch_size = 5
+
+    if not members:
         await context.bot.send_message(
             chat_id=GROUP_CHAT_ID,
             text=base_message,
@@ -72,53 +71,44 @@ Tap below to Vote & Claim your Reward 👇
         )
         return
 
-    batch_size = 5
-
-    for i in range(0, len(members_list), batch_size):
-        batch = members_list[i:i + batch_size]
-        tags = ", ".join([f"@{u}" for u in batch if u])
-
-        full_message = f"{base_message}\n\n{tags}"
+    for i in range(0, len(members), batch_size):
+        batch = members[i:i + batch_size]
+        tags = ", ".join([f"@{u}" for u in batch])
+        full_msg = f"{base_message}\n\n{tags}"
 
         try:
             await context.bot.send_message(
                 chat_id=GROUP_CHAT_ID,
-                text=full_message,
+                text=full_msg,
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
             await asyncio.sleep(8)
         except Exception as e:
-            print(f"⚠️ Error sending reminder batch: {e}")
+            print(f"Error sending reminder: {e}")
             await asyncio.sleep(3)
 
 # === MAIN APP ===
 async def main():
-    app = ApplicationBuilder().token(TOKEN).concurrent_updates(True).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # Job Queue
-    job_queue = app.job_queue
-    job_queue.run_repeating(send_reminder, interval=60 * 10, first=5)
+    # Start repeating reminder every 10 minutes
+    app.job_queue.run_repeating(send_reminder, interval=60 * 10, first=10)
 
-    print("🤖 CR7 Bot running... reminders active forever")
+    print("🤖 BOT RUNNING — Reminders active forever")
 
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
+    # THIS is the correct way (keeps job queue alive forever)
+    await app.run_polling(close_loop=False)
 
-    # Keep bot alive without blocking JobQueue
-    while True:
-        await asyncio.sleep(5)
-
-# === KEEP-ALIVE SERVER FOR RENDER ===
+# === KEEP-ALIVE SERVER ===
 def keep_alive():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), handler) as httpd:
-        print(f"🌐 Keep-alive server running on port {PORT}")
-        httpd.serve_forever()
+    with socketserver.TCPServer(("", PORT), handler) as server:
+        print(f"🌐 Keep-alive running on port {PORT}")
+        server.serve_forever()
 
 if __name__ == "__main__":
     threading.Thread(target=keep_alive, daemon=True).start()
