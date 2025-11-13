@@ -11,12 +11,12 @@ import socketserver
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
 VOTE_LINK = "https://cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
-GROUP_CHAT_ID = -1003295107465  # Replace with your actual group chat ID
+GROUP_CHAT_ID = -1003295107465
 
 # === GLOBAL DATA ===
 group_members = set()
 
-# === WELCOME MESSAGE HANDLER ===
+# === WELCOME ===
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         username = member.username or member.first_name
@@ -26,16 +26,14 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐  
 
 Welcome @{username}! ⚡  
-It’s time to unite and vote for CR7 Token. let’s push our project to the top of the trending list! 💪🔥  
+It’s time to unite and vote for CR7 Token. Let’s push our project to the top! 💪🔥  
 
-✅ *By voting, you’ll earn:*  
-• 💰 *CR7 Tokens*  
-• 🎁 *SOL Rewards*  
+💰 *CR7 Tokens*  
+🎁 *SOL Rewards*  
 
-Let’s show the world the unstoppable power of the CR7 Community! 🌍💫  
-
-👇 *Tap below to cast your vote & claim your rewards!*
+👇 Tap below to vote & claim your rewards!
 """
+
         keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -46,28 +44,24 @@ Let’s show the world the unstoppable power of the CR7 Community! 🌍💫
             reply_markup=reply_markup
         )
 
-# === REMINDER MESSAGE HANDLER ===
+# === REMINDER ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Base reminder text (the user asked to have tags included in this message)
     base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
 
-Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡  
+Let’s push CR7 Token straight to the top! 💪⚡  
 
-Each vote counts and brings you exclusive rewards:  
 💰 *CR7 Tokens*  
 🎁 *SOL Rewards*  
 
-Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
-
-*Tap below to vote & claim your Reward* 👇
+🔥 Tap below to vote & earn now 👇
 """
 
     members_list = list(group_members)
+
     if not members_list:
-        # Send just the base message if no members tracked
         await context.bot.send_message(
             chat_id=GROUP_CHAT_ID,
             text=base_message,
@@ -77,15 +71,12 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
         return
 
     batch_size = 5
-    # Send one message per batch: base_message + tags inline
+
     for i in range(0, len(members_list), batch_size):
         batch = members_list[i:i + batch_size]
-        # Format tags as comma-separated @user1, @user2, ...
         tags = ", ".join([f"@{u}" for u in batch if u])
-        if not tags.strip():
-            continue
 
-        full_message = f"{base_message}\n{tags}"
+        full_message = f"{base_message}\n\n{tags}"
 
         try:
             await context.bot.send_message(
@@ -94,37 +85,39 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
-            # safe delay between each message containing 5 tags
             await asyncio.sleep(8)
         except Exception as e:
-            print(f"⚠️ Error sending reminder batch {batch}: {e}")
+            print(f"⚠️ Error sending reminder batch: {e}")
             await asyncio.sleep(3)
 
 # === MAIN APP ===
 async def main():
     app = ApplicationBuilder().token(TOKEN).concurrent_updates(True).build()
+
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # JobQueue setup
+    # Job Queue
     job_queue = app.job_queue
-    job_queue.run_repeating(send_reminder, interval=60 * 10, first=5)  # Every 15 minutes
+    job_queue.run_repeating(send_reminder, interval=60 * 10, first=5)
 
-    print("🤖 CR7 Bot is live (Welcome + 5-user inline-tag reminders)...")
+    print("🤖 CR7 Bot running... reminders active forever")
 
     await app.initialize()
     await app.start()
     await app.updater.start_polling()
-    await asyncio.Event().wait()
+
+    # Keep bot alive without blocking JobQueue
+    while True:
+        await asyncio.sleep(5)
 
 # === KEEP-ALIVE SERVER FOR RENDER ===
 def keep_alive():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
     with socketserver.TCPServer(("", PORT), handler) as httpd:
-        print(f"✅ Keep-alive server running on port {PORT}")
+        print(f"🌐 Keep-alive server running on port {PORT}")
         httpd.serve_forever()
 
-# === START ===
 if __name__ == "__main__":
     threading.Thread(target=keep_alive, daemon=True).start()
     asyncio.run(main())
