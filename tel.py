@@ -121,6 +121,20 @@ async def main():
     await app.updater.start_polling()
     await asyncio.Event().wait()  # keeps the process alive forever
 
+import os
+import threading
+import http.server
+import socketserver
+
+def keep_alive():
+    PORT = int(os.environ.get("PORT", 8080))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), handler) as httpd:
+        print(f"✅ Keep-alive server running on port {PORT}")
+        httpd.serve_forever()
+
+threading.Thread(target=keep_alive, daemon=True).start()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
