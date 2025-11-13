@@ -56,7 +56,9 @@ Let’s push CR7 Token straight to the top! 💪⚡
 💰 *CR7 Tokens*  
 🎁 *SOL Rewards*  
 
-🔥 Tap below to vote & earn now 👇
+Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
+
+Tap below to Vote & Claim your Reward 👇
 """
 
     members_list = list(group_members)
