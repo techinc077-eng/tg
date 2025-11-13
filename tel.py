@@ -93,8 +93,8 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
         except Exception as e:
             print(f"Error sending reminder to @{username}: {e}")
             await asyncio.sleep(2)  # small pause before continuing
+import os
 
-# === MAIN APP ===
 async def main():
     app = (
         ApplicationBuilder()
@@ -105,7 +105,6 @@ async def main():
 
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # JobQueue for reminders
     job_queue = app.job_queue
     if job_queue is None:
         job_queue = JobQueue()
@@ -119,28 +118,23 @@ async def main():
     await app.initialize()
     await app.start()
 
-    # ✅ Use webhook instead of polling
-    PORT = int(os.environ.get("PORT", 8080))
-    await app.bot.set_webhook(url=f"https://{os.environ['RENDER_EXTERNAL_URL']}/")
+    # ✅ Safe webhook setup
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if not render_url:
+        raise RuntimeError("RENDER_EXTERNAL_URL not found! Set it in Render environment variables.")
+
+    webhook_url = f"{render_url}/"
+    port = int(os.environ.get("PORT", 8080))
+
+    await app.bot.delete_webhook()   # clear any old one
+    await app.bot.set_webhook(url=webhook_url)
+
     await app.run_webhook(
         listen="0.0.0.0",
-        port=PORT,
+        port=port,
         url_path="",
-        webhook_url=f"https://{os.environ['RENDER_EXTERNAL_URL']}/"
+        webhook_url=webhook_url,
     )
-
-
-
-# === KEEP-ALIVE SERVER (for Render or Replit) ===
-def keep_alive():
-    PORT = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), handler) as httpd:
-        print(f"✅ Keep-alive server running on port {PORT}")
-        httpd.serve_forever()
-
-threading.Thread(target=keep_alive, daemon=True).start()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
