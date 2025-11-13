@@ -53,7 +53,7 @@ async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     message = """
-📢*TIME TO RISE CR7 FAMILY!* 🐐 
+📢*TIME TO RISE CR7 FAMILY!* 🐐 {tags}
 
 Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡ 
 
