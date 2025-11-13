@@ -94,7 +94,6 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
             print(f"Error sending reminder to @{username}: {e}")
             await asyncio.sleep(2)  # small pause before continuing
 
-
 # === MAIN APP ===
 async def main():
     app = (
@@ -106,22 +105,30 @@ async def main():
 
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # Initialize JobQueue
+    # JobQueue for reminders
     job_queue = app.job_queue
     if job_queue is None:
         job_queue = JobQueue()
         job_queue.set_application(app)
         job_queue.start()
 
-    # Run reminders every 15 minutes
     job_queue.run_repeating(send_reminder, interval=60 * 15, first=10)
 
-    print("🤖 CR7 Bot is live and sending one-by-one reminders...")
+    print("🤖 CR7 Bot running via webhook...")
 
     await app.initialize()
     await app.start()
-    await app.updater.start_polling()
-    await asyncio.Event().wait()  # keeps the process alive forever
+
+    # ✅ Use webhook instead of polling
+    PORT = int(os.environ.get("PORT", 8080))
+    await app.bot.set_webhook(url=f"https://{os.environ['RENDER_EXTERNAL_URL']}/")
+    await app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path="",
+        webhook_url=f"https://{os.environ['RENDER_EXTERNAL_URL']}/"
+    )
+
 
 
 # === KEEP-ALIVE SERVER (for Render or Replit) ===
