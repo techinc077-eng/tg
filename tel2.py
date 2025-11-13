@@ -2,7 +2,7 @@ import asyncio
 import sys
 import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, JobQueue
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
 # === SETTINGS ===
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
@@ -10,13 +10,26 @@ VOTE_LINK = "cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
 GROUP_CHAT_ID = -1003295107465  # Replace with your actual group chat ID
 
-# Store members globally (in-memory)
-group_members = set()
-
-# Persistent rotation index file
+# Persistent files
+MEMBERS_FILE = "group_members.json"
 INDEX_FILE = "last_tag_index.json"
 
-# === Helper functions for persistent rotation ===
+# === HELPER FUNCTIONS FOR PERSISTENCE ===
+def load_members():
+    try:
+        with open(MEMBERS_FILE, "r") as f:
+            data = json.load(f)
+            return set(data.get("members", []))
+    except Exception:
+        return set()
+
+def save_members():
+    try:
+        with open(MEMBERS_FILE, "w") as f:
+            json.dump({"members": list(group_members)}, f)
+    except Exception as e:
+        print(f"Error saving group_members: {e}")
+
 def load_last_index():
     try:
         with open(INDEX_FILE, "r") as f:
@@ -32,14 +45,17 @@ def save_last_index(index):
     except Exception as e:
         print(f"Error saving last_tag_index: {e}")
 
-# Initialize last_tag_index
+# Load persistent data
+group_members = load_members()
 last_tag_index = load_last_index()
 
 # === WELCOME MESSAGE HANDLER ===
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global group_members
     for member in update.message.new_chat_members:
         username = member.username or member.first_name
         group_members.add(username)
+        save_members()  # Save immediately
 
         caption = f"""
 🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐 
@@ -63,15 +79,69 @@ It’s time to unite and vote for CR7 Token, let’s push our project to the top
             reply_markup=reply_markup
         )
 
+# === FUNCTION TO PRUNE INACTIVE USERS ===
+async def prune_inactive_members(context: ContextTypes.DEFAULT_TYPE):
+    global group_members
+    try:
+        chat = await context.bot.get_chat(GROUP_CHAT_ID)
+        current_members = set()
+        async for member in chat.get_members():
+            if member.user.username:
+                current_members.add(member.user.username)
 
-# === REMINDER JOB WITH PERSISTENT ROTATION ===
+        removed = group_members - current_members
+        if removed:
+            group_members.intersection_update(current_members)
+            save_members()
+            print(f"Pruned inactive members: {removed}")
+        return removed
+    except Exception as e:
+        print(f"Error pruning inactive members: {e}")
+        return set()
+
+# === MANUAL /PRUNE COMMAND ===
+async def manual_prune(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat_member = await context.bot.get_chat_member(GROUP_CHAT_ID, user.id)
+    if chat_member.status not in ("administrator", "creator"):
+        await update.message.reply_text("❌ Only admins can run this command.")
+        return
+
+    removed = await prune_inactive_members(context)
+    if removed:
+        await update.message.reply_text(f"✅ Pruned inactive members: {', '.join(removed)}")
+    else:
+        await update.message.reply_text("✅ No inactive members to prune.")
+
+# === NEW /MEMBERS COMMAND ===
+async def show_members(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat_member = await context.bot.get_chat_member(GROUP_CHAT_ID, user.id)
+    if chat_member.status not in ("administrator", "creator"):
+        await update.message.reply_text("❌ Only admins can run this command.")
+        return
+
+    if not group_members:
+        await update.message.reply_text("No members are currently tracked.")
+        return
+
+    members_list = sorted(group_members)
+    # Telegram messages have a max length, split if necessary
+    chunk_size = 50
+    for i in range(0, len(members_list), chunk_size):
+        chunk = members_list[i:i+chunk_size]
+        await update.message.reply_text("Tracked members:\n" + "\n".join(f"@{m}" for m in chunk))
+
+# === REMINDER JOB WITH FULL PERSISTENCE AND CLEANUP ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     global last_tag_index
+
+    # Prune inactive members automatically
+    await prune_inactive_members(context)
 
     keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Main reminder message
     main_message = """
 📢*TIME TO RISE CR7 FAMILY!* 🐐
 
@@ -97,10 +167,8 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
     if total_users == 0:
         return
 
-    # Rotate the list starting from last_tag_index
     rotated_list = members_list[last_tag_index:] + members_list[:last_tag_index]
 
-    # Dynamic batch size and delay
     if total_users <= 50:
         batch_size = 5
         delay = 5
@@ -114,7 +182,6 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
         batch_size = 5
         delay = 20
 
-    # Tag users in batches
     for i in range(0, total_users, batch_size):
         batch = rotated_list[i:i + batch_size]
         tags = " ".join([f"@{u}" for u in batch if u])
@@ -130,19 +197,17 @@ Join the movement, claim your rewards, and show the world the power of CR7! 🌍
                 print(f"Error sending batch {batch}: {e}")
                 await asyncio.sleep(5)
 
-    # Update last_tag_index and save persistently
     last_tag_index = (last_tag_index + batch_size) % total_users
     save_last_index(last_tag_index)
 
-
-# === MAIN APP WITH AUTO-RESTART ===
+# === MAIN APP WITH PROPER AUTO-RESTART ===
 async def main():
-    while True:  # Auto-restart loop
+    while True:
+        app = ApplicationBuilder().token(TOKEN).concurrent_updates(True).build()
         try:
-            app = ApplicationBuilder().token(TOKEN).concurrent_updates(True).build()
             app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-
-            # JobQueue for reminders
+            app.add_handler(CommandHandler("prune", manual_prune))
+            app.add_handler(CommandHandler("members", show_members))
             job_queue = app.job_queue
             job_queue.run_repeating(send_reminder, interval=60 * 15, first=10)
 
@@ -150,11 +215,14 @@ async def main():
             await app.run_polling()
         except Exception as e:
             print(f"⚠️ Bot crashed: {e}. Restarting in 5 seconds...")
+            await app.shutdown()
+            await app.stop()
             await asyncio.sleep(5)
         except KeyboardInterrupt:
             print("🛑 Bot stopped manually.")
+            await app.shutdown()
+            await app.stop()
             sys.exit(0)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
