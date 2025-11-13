@@ -2,6 +2,10 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from telegram.ext import JobQueue
 import asyncio
+import os
+import threading
+import http.server
+import socketserver
 
 # === SETTINGS ===
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
@@ -47,50 +51,48 @@ Let’s show the world the unstoppable power of the CR7 Community! 🌍💫
         )
 
 
-# === REMINDER JOB WITH TAGGING ===
+# === REMINDER JOB WITH INDIVIDUAL TAGGING ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    message = """
-📢*TIME TO RISE CR7 FAMILY!* 🐐 @{username}!
+    members_list = list(group_members)
 
-Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡ 
+    if not members_list:
+        print("No members found for reminder.")
+        return
 
-Every vote counts — and each one brings you exclusive rewards: 
-💰 *CR7 Tokens*
-🎁 *SOL Rewards*
+    print(f"Sending reminder to {len(members_list)} members...")
 
-Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥
+    for username in members_list:
+        if not username:
+            continue
+
+        message = f"""
+📢 *TIME TO RISE CR7 FAMILY!* 🐐 @{username}
+
+Let’s push CR7 Token straight to the top of the Sol Trending list! 💪⚡  
+
+Each vote brings you closer to your rewards:  
+💰 *CR7 Tokens*  
+🎁 *SOL Rewards*  
+
+Join the movement, claim your rewards, and show the world the power of CR7! 🌍🔥  
 
 👇 Tap below to vote & earn now!
 """
 
-    # Send main reminder message
-    await context.bot.send_message(
-        chat_id=GROUP_CHAT_ID,
-        text=message,
-        parse_mode="Markdown",
-        reply_markup=reply_markup
-    )
-
-    # Tag users in batches of 20
-    members_list = list(group_members)
-    batch_size = 20
-
-    for i in range(0, len(members_list), batch_size):
-        batch = members_list[i:i + batch_size]
-        tags = " ".join([f"@{u}" for u in batch if u])
-        if tags.strip():
-            try:
-                await context.bot.send_message(
-                    chat_id=GROUP_CHAT_ID,
-                    text=f"🔔VOTE NOW! \n{tags}",
-                    disable_notification=True
-                )
-                await asyncio.sleep(5)  # slight delay to avoid spam
-            except Exception as e:
-                print(f"Error tagging batch: {e}")
+        try:
+            await context.bot.send_message(
+                chat_id=GROUP_CHAT_ID,
+                text=message,
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
+            await asyncio.sleep(7)  # Wait 7 seconds between each mention (safe delay)
+        except Exception as e:
+            print(f"Error sending reminder to @{username}: {e}")
+            await asyncio.sleep(2)  # small pause before continuing
 
 
 # === MAIN APP ===
@@ -111,21 +113,18 @@ async def main():
         job_queue.set_application(app)
         job_queue.start()
 
-    # Run hourly reminders
-    job_queue.run_repeating(send_reminder, interval=60 * 15 * 1, first=5)
+    # Run reminders every 15 minutes
+    job_queue.run_repeating(send_reminder, interval=60 * 15, first=10)
 
-    print("🤖 CR7 Bot is live and sending hourly reminders with tags...")
+    print("🤖 CR7 Bot is live and sending one-by-one reminders...")
 
     await app.initialize()
     await app.start()
     await app.updater.start_polling()
     await asyncio.Event().wait()  # keeps the process alive forever
 
-import os
-import threading
-import http.server
-import socketserver
 
+# === KEEP-ALIVE SERVER (for Render or Replit) ===
 def keep_alive():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
