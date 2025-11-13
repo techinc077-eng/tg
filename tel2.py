@@ -107,7 +107,7 @@ async def main():
 
     # JobQueue setup
     job_queue = app.job_queue
-    job_queue.run_repeating(send_reminder, interval=60 * 15, first=10)  # Every 15 minutes
+    job_queue.run_repeating(send_reminder, interval=60 * 10, first=5)  # Every 15 minutes
 
     print("🤖 CR7 Bot is live (Welcome + 5-user inline-tag reminders)...")
 
