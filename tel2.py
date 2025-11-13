@@ -1,11 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-from telegram.ext import JobQueue
 import asyncio
 import os
+from flask import Flask
 import threading
-import http.server
-import socketserver
 
 # === SETTINGS ===
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
@@ -43,7 +41,7 @@ Let’s unite and vote CR7 Token to the top! 💪🔥
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-# === REMINDER ===
+# === REMINDER MESSAGE ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
     base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
@@ -62,6 +60,7 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
     members = list(group_members)
     batch_size = 5
 
+    # If there are no stored users yet
     if not members:
         await context.bot.send_message(
             chat_id=GROUP_CHAT_ID,
@@ -88,28 +87,31 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
             print(f"Error sending reminder: {e}")
             await asyncio.sleep(3)
 
-# === MAIN APP ===
-async def main():
+# === MAIN BOT ===
+def start_bot():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # Start repeating reminder every 10 minutes
+    # Job queue (every 10 minutes)
     app.job_queue.run_repeating(send_reminder, interval=60 * 10, first=10)
 
     print("🤖 BOT RUNNING — Reminders active forever")
 
-    # THIS is the correct way (keeps job queue alive forever)
-    await app.run_polling(close_loop=False)
+    app.run_polling()
 
-# === KEEP-ALIVE SERVER ===
+# === KEEP ALIVE SERVER ===
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def index():
+    return "Bot is alive!"
+
 def keep_alive():
     PORT = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), handler) as server:
-        print(f"🌐 Keep-alive running on port {PORT}")
-        server.serve_forever()
+    flask_app.run(host="0.0.0.0", port=PORT)
 
+# === RUN EVERYTHING ===
 if __name__ == "__main__":
     threading.Thread(target=keep_alive, daemon=True).start()
-    asyncio.run(main())
+    start_bot()
