@@ -1,9 +1,10 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import asyncio
-import os
-from flask import Flask
 import threading
+import http.server
+import socketserver
+import os
 
 # === SETTINGS ===
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
@@ -14,7 +15,7 @@ GROUP_CHAT_ID = -1003295107465
 # === GLOBAL DATA ===
 group_members = set()
 
-# === WELCOME MESSAGE ===
+# === WELCOME ===
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         username = member.username or member.first_name
@@ -41,7 +42,7 @@ Let’s unite and vote CR7 Token to the top! 💪🔥
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-# === REMINDER MESSAGE ===
+# === REMINDER ===
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
     base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
@@ -60,7 +61,6 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
     members = list(group_members)
     batch_size = 5
 
-    # If there are no stored users yet
     if not members:
         await context.bot.send_message(
             chat_id=GROUP_CHAT_ID,
@@ -72,46 +72,44 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
 
     for i in range(0, len(members), batch_size):
         batch = members[i:i + batch_size]
-        tags = ", ".join([f"@{u}" for u in batch])
-        full_msg = f"{base_message}\n\n{tags}"
+        tags = ", ".join(f"@{u}" for u in batch)
+        message = f"{base_message}\n\n{tags}"
 
         try:
             await context.bot.send_message(
                 chat_id=GROUP_CHAT_ID,
-                text=full_msg,
+                text=message,
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
-            await asyncio.sleep(8)
+            await asyncio.sleep(5)
         except Exception as e:
-            print(f"Error sending reminder: {e}")
+            print("Error sending:", e)
             await asyncio.sleep(3)
 
-# === MAIN BOT ===
+# === KEEP-ALIVE ===
+def keep_alive():
+    PORT = int(os.environ.get("PORT", 8080))
+    handler = http.server.SimpleHTTPRequestHandler
+
+    # prevent port-in-use crash
+    try:
+        with socketserver.TCPServer(("", PORT), handler) as server:
+            print(f"🌐 Keep-alive running on port {PORT}")
+            server.serve_forever()
+    except OSError:
+        print("⚠ Port already in use — skipping keep-alive server")
+
+# === START BOT ===
 def start_bot():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
+    app.job_queue.run_repeating(send_reminder, interval=600, first=10)
 
-    # Job queue (every 10 minutes)
-    app.job_queue.run_repeating(send_reminder, interval=60 * 10, first=10)
-
-    print("🤖 BOT RUNNING — Reminders active forever")
-
+    print("🤖 BOT RUNNING — Polling active")
     app.run_polling()
 
-# === KEEP ALIVE SERVER ===
-flask_app = Flask(__name__)
-
-@flask_app.route("/")
-def index():
-    return "Bot is alive!"
-
-def keep_alive():
-    PORT = int(os.environ.get("PORT", 8080))
-    flask_app.run(host="0.0.0.0", port=PORT)
-
-# === RUN EVERYTHING ===
 if __name__ == "__main__":
     threading.Thread(target=keep_alive, daemon=True).start()
     start_bot()
