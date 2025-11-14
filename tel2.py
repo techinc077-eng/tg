@@ -2,35 +2,20 @@ import os
 import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-import threading
-import http.server
-import socketserver
-from datetime import datetime
 
 # ==============================
-#  SETTINGS
+# SETTINGS
 # ==============================
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
 VOTE_LINK = "https://cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
-GROUP_CHAT_ID = -1003295107465
-LOG_FILE = "bot.log"
+GROUP_CHAT_ID = -1003295107465  # replace with your group chat ID
 
 # Store usernames
 group_members = set()
 
 # ==============================
-#  LOGGING FUNCTION
-# ==============================
-def log_event(message: str):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_message = f"[{timestamp}] {message}"
-    print(log_message)
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(log_message + "\n")
-
-# ==============================
-#  WELCOME MESSAGE
+# WELCOME MESSAGE
 # ==============================
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
@@ -55,10 +40,9 @@ Let’s unite and vote CR7 Token to the top! 💪🔥
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-        log_event(f"✅ Welcome message sent to @{username}")
 
 # ==============================
-#  REMINDER MESSAGE
+# REMINDER MESSAGE
 # ==============================
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
     base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
@@ -83,7 +67,6 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
-        log_event("📢 Reminder sent (no users tagged)")
         return
 
     for i in range(0, len(members), batch_size):
@@ -98,57 +81,45 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
-            log_event(f"📢 Reminder sent to: {tags}")
         except Exception as e:
-            log_event(f"❌ Reminder error: {e}")
-        await asyncio.sleep(7)
+            print(f"❌ Reminder error: {e}")
+
+        await asyncio.sleep(7)  # anti-spam delay
 
 # ==============================
-#  KEEP-ALIVE SERVER
-# ==============================
-def keep_alive():
-    PORT = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
-    try:
-        with socketserver.TCPServer(("", PORT), handler) as httpd:
-            log_event(f"🌐 Keep-alive server running on port {PORT}")
-            httpd.serve_forever()
-    except OSError:
-        log_event(f"⚠️ Port {PORT} already in use. Keep-alive server skipped.")
-
-# ==============================
-#  BOT START / AUTO-RESTART
+# AUTO-RESTART BOT
 # ==============================
 async def run_bot_forever():
     while True:
         app = None
         try:
-            log_event("🤖 Starting Telegram bot…")
+            print("🤖 Starting Telegram bot…")
+
             app = ApplicationBuilder().token(TOKEN).build()
             app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-            # Repeating reminder every 10 minutes
+            # Repeat reminders every 10 minutes
             app.job_queue.run_repeating(send_reminder, interval=600, first=15)
 
+            # Start bot
             await app.initialize()
             await app.start()
             await app.run_polling(stop_signals=None)
 
         except Exception as e:
-            log_event(f"❌ BOT CRASHED — Restarting in 5s: {e}")
+            print(f"❌ BOT CRASHED — Restarting in 5s: {e}")
             if app:
                 try:
                     await app.stop()
                     await app.shutdown()
-                except Exception:
-                    pass
+                except Exception as inner_e:
+                    print(f"❌ Error during shutdown: {inner_e}")
             await asyncio.sleep(5)
 
 # ==============================
-#  MAIN
+# MAIN ENTRY
 # ==============================
 async def main():
-    threading.Thread(target=keep_alive, daemon=True).start()
     await run_bot_forever()
 
 if __name__ == "__main__":
