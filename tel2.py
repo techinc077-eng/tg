@@ -2,7 +2,10 @@ import os
 import asyncio
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-from aiohttp import web
+import threading
+import http.server
+import socketserver
+from datetime import datetime
 
 # ==============================
 #  SETTINGS
@@ -10,10 +13,21 @@ from aiohttp import web
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
 VOTE_LINK = "https://cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
-GROUP_CHAT_ID = -1003295107465  # Your group ID
+GROUP_CHAT_ID = -1003295107465
+LOG_FILE = "bot.log"
 
 # Store usernames
 group_members = set()
+
+# ==============================
+#  LOGGING FUNCTION
+# ==============================
+def log_event(message: str):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message = f"[{timestamp}] {message}"
+    print(log_message)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(log_message + "\n")
 
 # ==============================
 #  WELCOME MESSAGE
@@ -41,6 +55,7 @@ Let’s unite and vote CR7 Token to the top! 💪🔥
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
+        log_event(f"✅ Welcome message sent to @{username}")
 
 # ==============================
 #  REMINDER MESSAGE
@@ -68,9 +83,9 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
+        log_event("📢 Reminder sent (no users tagged)")
         return
 
-    # Send batches of 5 users tagged per message
     for i in range(0, len(members), batch_size):
         batch = members[i:i + batch_size]
         tags = ", ".join([f"@{u}" for u in batch])
@@ -83,57 +98,57 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
+            log_event(f"📢 Reminder sent to: {tags}")
         except Exception as e:
-            print("❌ Reminder error:", e)
-
-        await asyncio.sleep(7)  # anti-spam delay
+            log_event(f"❌ Reminder error: {e}")
+        await asyncio.sleep(7)
 
 # ==============================
-#  KEEP-ALIVE WEB SERVER
+#  KEEP-ALIVE SERVER
 # ==============================
-async def handle(request):
-    return web.Response(text="Bot OK — Running")
-
-async def start_web():
-    app = web.Application()
-    app.router.add_get("/", handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"🌐 Web keep-alive server active on port {port}")
+def keep_alive():
+    PORT = int(os.environ.get("PORT", 8080))
+    handler = http.server.SimpleHTTPRequestHandler
+    try:
+        with socketserver.TCPServer(("", PORT), handler) as httpd:
+            log_event(f"🌐 Keep-alive server running on port {PORT}")
+            httpd.serve_forever()
+    except OSError:
+        log_event(f"⚠️ Port {PORT} already in use. Keep-alive server skipped.")
 
 # ==============================
 #  BOT START / AUTO-RESTART
 # ==============================
 async def run_bot_forever():
     while True:
+        app = None
         try:
-            print("🤖 Starting Telegram bot…")
-            application = ApplicationBuilder().token(TOKEN).build()
-            application.add_handler(
-                MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome)
-            )
+            log_event("🤖 Starting Telegram bot…")
+            app = ApplicationBuilder().token(TOKEN).build()
+            app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
             # Repeating reminder every 10 minutes
-            application.job_queue.run_repeating(send_reminder, interval=600, first=15)
+            app.job_queue.run_repeating(send_reminder, interval=600, first=15)
 
-            # Run bot polling (blocking)
-            await application.run_polling(close_loop=False)
+            await app.initialize()
+            await app.start()
+            await app.run_polling(stop_signals=None)
 
         except Exception as e:
-            print("❌ BOT CRASHED — Restarting in 5s:", e)
-
-        await asyncio.sleep(5)  # delay before auto-restart
+            log_event(f"❌ BOT CRASHED — Restarting in 5s: {e}")
+            if app:
+                try:
+                    await app.stop()
+                    await app.shutdown()
+                except Exception:
+                    pass
+            await asyncio.sleep(5)
 
 # ==============================
 #  MAIN
 # ==============================
 async def main():
-    # Start web server
-    await start_web()
-    # Start bot
+    threading.Thread(target=keep_alive, daemon=True).start()
     await run_bot_forever()
 
 if __name__ == "__main__":
