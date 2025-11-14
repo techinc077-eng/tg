@@ -1,32 +1,28 @@
 import os
-import threading
-import http.server
-import socketserver
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+import asyncio
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
+    ContextTypes,
     MessageHandler,
     filters,
-    ContextTypes
 )
-import asyncio
+from aiohttp import web
 
-# ==============================
-# SETTINGS
-# ==============================
+# ==========================================
+# CONFIG
+# ==========================================
 TOKEN = "7571535805:AAGDJBJqzuytpjpce9ivNG6eAUaRTYeQBuY"
+GROUP_CHAT_ID = -1003295107465
 VOTE_LINK = "https://cr7.soltrendingvote.top"
 IMAGE_URL = "https://icohtech.ng/cr7.jpg"
-GROUP_CHAT_ID = -1003295107465
 
-# Track group members
 group_members = set()
 
-# ==============================
-# WELCOME MESSAGE
-# ==============================
+# ==========================================
+# WELCOME HANDLER
+# ==========================================
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not update.message or not update.message.new_chat_members:
         return
 
@@ -45,22 +41,21 @@ Let’s unite and vote CR7 Token to the top! 💪🔥
 
 👇 Tap below to vote & claim your Rewards!
 """
-
-        keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
+        btn = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
 
         await update.message.reply_photo(
             photo=IMAGE_URL,
             caption=caption,
             parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
+            reply_markup=InlineKeyboardMarkup(btn)
         )
 
-# ==============================
-# REMINDER MESSAGE
-# ==============================
+# ==========================================
+# REMINDER HANDLER
+# ==========================================
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
-    base_message = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
+    base_msg = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
 
 Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡  
 
@@ -70,85 +65,96 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
 🔥 Tap below to Vote & Claim your Reward 👇
 """
 
-    keyboard = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    btn = [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
+    reply_markup = InlineKeyboardMarkup(btn)
 
     members = list(group_members)
     batch_size = 5
 
     if not members:
-        # Send message without tags
         await context.bot.send_message(
-            chat_id=GROUP_CHAT_ID,
-            text=base_message,
+            GROUP_CHAT_ID,
+            base_msg,
             parse_mode="Markdown",
             reply_markup=reply_markup
         )
         return
 
-    # Send tags in groups of 5
     for i in range(0, len(members), batch_size):
         batch = members[i:i + batch_size]
-        tags = ", ".join(f"@{u}" for u in batch)
-        full_msg = f"{base_message}\n\n{tags}"
+        tags = ", ".join([f"@{u}" for u in batch])
+
+        full_msg = f"{base_msg}\n\n{tags}"
 
         try:
             await context.bot.send_message(
-                chat_id=GROUP_CHAT_ID,
-                text=full_msg,
+                GROUP_CHAT_ID,
+                full_msg,
                 parse_mode="Markdown",
                 reply_markup=reply_markup
             )
         except Exception as e:
-            print("❌ Error sending reminder:", e)
+            print("❌ Reminder error:", e)
 
-        await asyncio.sleep(7)  # anti-spam delay
+        await asyncio.sleep(6)
 
-# ==============================
-# KEEP-ALIVE SERVER (REQUIRED BY RENDER)
-# ==============================
-def keep_alive_server():
+
+# ==========================================
+# AIOHTTP WEBHOOK SERVER
+# ==========================================
+async def webhook_handler(request):
+    data = await request.json()
+    await request.app["bot_app"].update_queue.put(data)
+    return web.Response(text="OK")
+
+async def start_webhook(app):
+    server = web.Application()
+    server["bot_app"] = app
+    server.router.add_post("/", webhook_handler)
+
+    runner = web.AppRunner(server)
+    await runner.setup()
+
     port = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
+    site = web.TCPSite(runner, "0.0.0.0", port)
 
-    try:
-        with socketserver.TCPServer(("", port), handler) as httpd:
-            print(f"🌐 Keep-alive server running on port {port}")
-            httpd.serve_forever()
-    except Exception as e:
-        print("⚠️ Keep-alive server error:", e)
+    print(f"🌐 Webhook listening on port {port}")
+    await site.start()
 
-# ==============================
-# MAIN BOT FUNCTION
-# ==============================
-def main():
 
-    print("🤖 Starting CR7 Bot…")
+# ==========================================
+# MAIN APP (WEBHOOK MODE)
+# ==========================================
+async def main():
+
+    external_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if not external_url:
+        raise Exception("❌ Set env variable RENDER_EXTERNAL_URL in Render settings!")
 
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # Welcome handler
-    app.add_handler(
-        MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome)
-    )
+    # HANDLERS
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
-    # Reminder every 10 minutes
-    app.job_queue.run_repeating(
-        send_reminder,
-        interval=600,   # 10 minutes
-        first=15        # fire first reminder after 15 seconds
-    )
+    # 🔥 REMINDER EVERY 10 MINUTES
+    app.job_queue.run_repeating(send_reminder, interval=600, first=20)
 
-    # Start bot (handles its own event loop)
-    app.run_polling()
+    # Start webhook
+    await app.bot.set_webhook(url=f"{external_url}/")
+    print("🔗 Webhook set to:", f"{external_url}/")
 
-# ==============================
-# START EVERYTHING
-# ==============================
+    await start_webhook(app)
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()  # Needed for internal async queue
+
+    print("🤖 BOT RUNNING — Webhook mode ACTIVE")
+
+    await asyncio.Event().wait()  # Keep alive forever
+
+
+# ==========================================
+# ENTRY POINT
+# ==========================================
 if __name__ == "__main__":
-
-    # Launch keep-alive server on a background thread
-    threading.Thread(target=keep_alive_server, daemon=True).start()
-
-    # Run Telegram bot
-    main()
+    asyncio.run(main())
