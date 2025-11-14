@@ -1,5 +1,8 @@
 import os
 import asyncio
+import threading
+import http.server
+import socketserver
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -7,7 +10,6 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
-from aiohttp import web
 
 # ==============================
 #  SETTINGS
@@ -73,6 +75,7 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
     members = list(group_members)
     batch_size = 5
 
+    # If no members yet
     if not members:
         await context.bot.send_message(
             chat_id=GROUP_CHAT_ID,
@@ -82,6 +85,7 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
         )
         return
 
+    # Send batches of 5 users each
     for i in range(0, len(members), batch_size):
         batch = members[i:i + batch_size]
         tags = ", ".join([f"@{u}" for u in batch])
@@ -97,69 +101,56 @@ Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡
         except Exception as e:
             print("❌ Reminder error:", e)
 
-        await asyncio.sleep(7)  # anti-spam safe delay
+        await asyncio.sleep(7)  # Anti-spam delay per batch
 
 
 # ==============================
-#  KEEP-ALIVE WEB SERVER (Render requirement)
+#  KEEP-ALIVE SERVER FOR RENDER
 # ==============================
-async def handle(request):
-    return web.Response(text="Bot OK — Running")
-
-async def start_web():
-    app = web.Application()
-    app.router.add_get("/", handle)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-    print(f"🌐 Web keep-alive server active on port {port}")
+def keep_alive():
+    PORT = int(os.environ.get("PORT", 8080))
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), handler) as server:
+        print(f"🌐 Keep-alive running on port {PORT}")
+        server.serve_forever()
 
 
 # ==============================
-#  AUTO-RESTART PROTECTION
+#  AUTO-RESTART PROTECTED BOT LOOP
 # ==============================
 async def run_bot_forever():
-    """
-    This protects the bot from unexpected Telegram disconnects,
-    Render restarts, and any async crashes.
-    It always restarts the bot automatically.
-    """
 
     while True:
         try:
             print("🤖 Starting Telegram bot…")
 
-            application = ApplicationBuilder().token(TOKEN).build()
+            app = ApplicationBuilder().token(TOKEN).build()
 
-            application.add_handler(
+            # Handle new members
+            app.add_handler(
                 MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome)
             )
 
-            # Repeating reminder every 10 minutes
-            application.job_queue.run_repeating(send_reminder, interval=600, first=15)
+            # Reminder every 10 minutes
+            app.job_queue.run_repeating(send_reminder, interval=600, first=15)
 
-            # Start bot polling (non-blocking)
-            await application.run_polling(close_loop=False)
+            # Start polling mode
+            await app.run_polling(close_loop=False)
 
         except Exception as e:
             print("❌ BOT CRASHED — Restarting in 5s:", e)
 
-        await asyncio.sleep(5)  # small delay before restarting
+        await asyncio.sleep(5)  # Delay before restart
 
 
 # ==============================
 #  MAIN
 # ==============================
 async def main():
-    # Start web server
-    await start_web()
+    # Start keep-alive server in background thread
+    threading.Thread(target=keep_alive, daemon=True).start()
 
-    # Start bot with auto-restart
+    # Start bot forever loop
     await run_bot_forever()
 
 
