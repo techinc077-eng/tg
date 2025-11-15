@@ -39,7 +39,7 @@ $CR7 is climbing Sol Trending and we need every vote RIGHT NOW.
 Claim it the moment you vote.*
 
 This is your window, don’t miss it.
-Tap Below, Vote, Secure your Reward, and Push $CR7 to the top! ⚡🚀
+Tap Below, *Vote, Secure your Reward,* and Push $CR7 to the top! ⚡🚀
 """
         button = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
@@ -57,15 +57,15 @@ Tap Below, Vote, Secure your Reward, and Push $CR7 to the top! ⚡🚀
 # ==============================
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
-    base_msg = """🔥 CR7 FAMILY — THIS IS YOUR MOMENT! ⚡🐐 
+    base_msg = """🔥 *CR7 FAMILY — THIS IS YOUR MOMENT!* ⚡🐐 
 
 $CR7 is surging, but we need your vote RIGHT NOW to lock our spot on Sol Trending.
 
 💰*Vote Now → Claim instant $SOL + $CR7 token reward.*🎁
-Miss it → You lose the drop.
+*Miss it → You lose the drop.*
 
 Don’t wait. Don’t think.
-Tap below to Vote and Claim your reward before it’s gone. 🚀💰
+Tap below to *Vote and Claim your Reward* before it’s gone. 🚀💰
 """
 
     reply_markup = InlineKeyboardMarkup(
