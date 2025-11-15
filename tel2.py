@@ -30,17 +30,16 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         group_members.add(username)
 
         caption = f"""
-🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐  
+🚨 *CR7 FAMILY — NOW OR NEVER!* 🐐🔥
 
-Welcome @{username}! ⚡  
-Your entry strengthens the CR7 movement. To keep our token leading the trend charts, every member’s action counts, including yours.
+@{username}, *Your vote = Rewards.*
+$CR7 is climbing Sol Trending and we need every vote RIGHT NOW.
 
-*Cast your vote and receive instant on-chain rewards:*
-💰 *$CR7 Token*
-🎁 *$SOL*
+*Vote now → Instant $SOL + $CR7 token reward. No wait. No delay.
+Claim it the moment you vote.*
 
-This community moves fast. Don’t fall behind.
-👇 Tap below to vote & claim your Rewards!
+This is your window, don’t miss it.
+Tap Below, Vote, Secure your Reward, and Push $CR7 to the top! ⚡🚀
 """
         button = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🗳️ VOTE $CR7", url=VOTE_LINK)]]
@@ -58,15 +57,15 @@ This community moves fast. Don’t fall behind.
 # ==============================
 async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
-    base_msg = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
+    base_msg = """🔥 CR7 FAMILY — THIS IS YOUR MOMENT! ⚡🐐 
 
-Let’s drive CR7 Token to the top of Sol Trending and show the ecosystem our strength. 💪⚡
+$CR7 is surging, but we need your vote RIGHT NOW to lock our spot on Sol Trending.
 
-*Earn instant rewards with every vote:*
-💰 *$CR7 Tokens*  
-🎁 *$SOL Rewards*  
+💰*Vote Now → Claim instant $SOL + $CR7 token reward.*🎁
+Miss it → You lose the drop.
 
-🔥 Tap below to Vote Now & Claim your Reward 👇
+Don’t wait. Don’t think.
+Tap below to Vote and Claim your reward before it’s gone. 🚀💰
 """
 
     reply_markup = InlineKeyboardMarkup(
