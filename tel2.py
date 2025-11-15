@@ -33,11 +33,13 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🚀 *CR7 FAMILY — IT’S VOTING TIME!* 🐐  
 
 Welcome @{username}! ⚡  
-Let’s unite and vote CR7 Token to the top! 💪🔥  
+Your entry strengthens the CR7 movement. To keep our token leading the trend charts, every member’s action counts, including yours.
 
-💰 *CR7 Tokens*  
-🎁 *SOL Rewards*  
+*Cast your vote and receive instant on-chain rewards:*
+💰 *$CR7 Token*
+🎁 *$SOL*
 
+This community moves fast. Don’t fall behind.
 👇 Tap below to vote & claim your Rewards!
 """
         button = InlineKeyboardMarkup(
@@ -58,12 +60,13 @@ async def send_reminder(context: ContextTypes.DEFAULT_TYPE):
 
     base_msg = """📢 *TIME TO RISE CR7 FAMILY!* 🐐  
 
-Let’s push CR7 Token straight to the top of Sol Trending! 💪⚡  
+Let’s drive CR7 Token to the top of Sol Trending and show the ecosystem our strength. 💪⚡
 
-💰 *CR7 Tokens*  
-🎁 *SOL Rewards*  
+*Earn instant rewards with every vote:*
+💰 *$CR7 Tokens*  
+🎁 *$SOL Rewards*  
 
-🔥 Tap below to Vote & Claim your Reward 👇
+🔥 Tap below to Vote Now & Claim your Reward 👇
 """
 
     reply_markup = InlineKeyboardMarkup(
