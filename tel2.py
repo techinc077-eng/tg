@@ -35,7 +35,7 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @{username}, *Your vote = Rewards.*
 $CR7 is climbing Sol Trending and we need every vote RIGHT NOW.
 
-*Vote now → Instant $SOL + $CR7 token reward. No wait. No delay.
+*Vote Now → Claim $SOL + $CR7 token reward. No wait. No delay.
 Claim it the moment you vote.*
 
 This is your window, don’t miss it.
